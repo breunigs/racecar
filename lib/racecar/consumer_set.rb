@@ -77,6 +77,7 @@ module Racecar
         "auto.offset.reset"       => subscription.start_from_beginning ? "earliest" : "largest",
         "bootstrap.servers"       => @config.brokers.join(","),
         "client.id"               => @config.client_id,
+        "enable.partition.eof"    => @config.raise_on_partition_eof,
         "fetch.max.bytes"         => @config.max_bytes,
         "fetch.message.max.bytes" => subscription.max_bytes_per_partition,
         "fetch.wait.max.ms"       => @config.max_wait_time * 1000,
@@ -85,7 +86,6 @@ module Racecar
         "queued.min.messages"     => @config.min_message_queue_size,
         "session.timeout.ms"      => @config.session_timeout * 1000,
         "socket.timeout.ms"       => @config.socket_timeout * 1000,
-        "enable.partition.eof"    => @config.raise_on_partition_eof,
       }
       config.merge! @config.rdkafka_consumer
       config.merge! subscription.additional_config
