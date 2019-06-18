@@ -133,9 +133,9 @@ module Racecar
       @instrumenter.instrument("process_message.racecar", payload) do
         with_pause(message.topic, message.partition, message.offset) do
           processor.process(message)
+          processor.deliver!
+          consumer.store_offset(message)
         end
-        processor.deliver!
-        consumer.store_offset(message)
       end
     end
 
@@ -152,9 +152,9 @@ module Racecar
         first, last = messages.first, messages.last
         with_pause(first.topic, first.partition, first.offset..last.offset) do
           processor.process_batch(messages)
+          processor.deliver!
+          consumer.store_offset(messages.last)
         end
-        processor.deliver!
-        consumer.store_offset(messages.last)
       end
     end
 
@@ -179,7 +179,7 @@ module Racecar
           raise ArgumentError, "Invalid value for pause_timeout: must be integer greater or equal -1"
         end
 
-        consumer.pause(info[:topic], info[:partition])
+        consumer.pause(topic, partition)
 
         pauses[topic][partition].pause!(
           timeout:             timeout,
