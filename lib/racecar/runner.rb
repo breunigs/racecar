@@ -21,6 +21,8 @@ module Racecar
     def setup_pauses
       timeout = if config.pause_timeout == -1
         nil
+      elsif config.pause_timeout == 0
+        # no op, handled elsewhere
       elsif config.pause_timeout > 0
         config.pause_timeout
       else
@@ -193,6 +195,8 @@ module Racecar
     end
 
     def resume_paused_partitions
+      return if config.pause_timeout == 0
+
       pauses.each do |topic, partitions|
         partitions.each do |partition, pause|
           @instrumenter.instrument("pause_status.racecar", {
