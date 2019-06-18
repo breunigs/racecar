@@ -1,8 +1,15 @@
 require "ostruct"
 
 RSpec.describe Racecar::Pause do
-  let(:clock) { OpenStruct.new(now: 30) }
-  let(:pause) { described_class.new(clock: clock) }
+  let(:pause) { described_class.new(timeout: 10) }
+
+  before do
+    Timecop.freeze(0)
+  end
+
+  after do
+    Timecop.return
+  end
 
   describe "#paused?" do
     it "returns true if we're paused" do
@@ -20,55 +27,66 @@ RSpec.describe Racecar::Pause do
   end
 
   describe "#expired?" do
+    it "returns false on infinite timeout" do
+      pause.instance_variable_set(:@timeout, nil)
+      pause.pause!
+      expect(pause.expired?).to eq false
+    end
+
     it "returns false if no timeout was specified" do
       pause.pause!
       expect(pause.expired?).to eq false
     end
 
     it "returns false if the timeout has not yet passed" do
-      pause.pause!(timeout: 10)
+      pause.pause!
 
-      clock.now = 39
+      Timecop.freeze(9)
 
       expect(pause.expired?).to eq false
     end
 
     it "returns true if the timeout has passed" do
-      pause.pause!(timeout: 10)
+      pause.pause!
 
-      clock.now = 40
+      Timecop.freeze(10)
 
       expect(pause.expired?).to eq true
     end
 
     context "with exponential backoff" do
       it "doubles the timeout with each attempt" do
-        pause.pause!(timeout: 10, exponential_backoff: true)
+        pause.instance_variable_set(:@exponential_backoff, true)
+        pause.pause!
         pause.resume!
-        pause.pause!(timeout: 10, exponential_backoff: true)
+        pause.pause!
         pause.resume!
-        pause.pause!(timeout: 10, exponential_backoff: true)
+        pause.pause!
 
         expect(pause.expired?).to eq false
 
-        clock.now += 10 + 20 + 40
+        Timecop.freeze(10 + 20 + 40)
 
-        expect(pause.expired?).to eq true
         expect(pause.expired?).to eq true
       end
 
       it "never pauses for more than the max timeout" do
-        pause.pause!(timeout: 10, max_timeout: 30, exponential_backoff: true)
-        pause.resume!
-        pause.pause!(timeout: 10, max_timeout: 30, exponential_backoff: true)
-        pause.resume!
-        pause.pause!(timeout: 10, max_timeout: 30, exponential_backoff: true)
+        pause.instance_variable_set(:@exponential_backoff, true)
+        pause.instance_variable_set(:@max_timeout, 30)
 
-        clock.now += 29
+        pause.pause!
+        pause.resume!
+        pause.pause!
+        pause.resume!
+        pause.pause!
+        pause.resume!
+        pause.pause!
+
+        Timecop.freeze(29)
 
         expect(pause.expired?).to eq false
 
-        clock.now += 1
+        Timecop.freeze(1)
 
         expect(pause.expired?).to eq true
       end

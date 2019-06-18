@@ -96,7 +96,7 @@ module Racecar
 
     def find_consumer_by(topic, partition)
       each do |consumer|
-        tpl = consumer.subscription.to_h
+        tpl = consumer.assignment.to_h
         rdkafka_partition = tpl[topic]&.detect { |part| part.partition == partition }
         next unless rdkafka_partition
         filtered_tpl = Rdkafka::Consumer::TopicPartitionList.new({ topic => [rdkafka_partition] })

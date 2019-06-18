@@ -56,7 +56,7 @@ RSpec.describe Racecar::ConsumerSet do
 
       describe "pause and resume" do
         before do
-          allow(rdconsumer).to receive(:subscription).and_return(tpl(subscriptions.first))
+          allow(rdconsumer).to receive(:assignment).and_return(tpl(subscriptions.first))
         end
 
         it "#pause allows to pause known partitions" do
@@ -173,9 +173,9 @@ RSpec.describe Racecar::ConsumerSet do
 
   context "A consumer with multiple subscriptions" do
     let(:subscriptions) { [ subscription("feature"), subscription("profile"), subscription("account") ] }
-    let(:rdconsumer1)   { double("rdconsumer_feature", subscribe: true, subscription: tpl(subscriptions[0])) }
-    let(:rdconsumer2)   { double("rdconsumer_profile", subscribe: true, subscription: tpl(subscriptions[1])) }
-    let(:rdconsumer3)   { double("rdconsumer_account", subscribe: true, subscription: tpl(subscriptions[2])) }
+    let(:rdconsumer1)   { double("rdconsumer_feature", subscribe: true, assignment: tpl(subscriptions[0])) }
+    let(:rdconsumer2)   { double("rdconsumer_profile", subscribe: true, assignment: tpl(subscriptions[1])) }
+    let(:rdconsumer3)   { double("rdconsumer_account", subscribe: true, assignment: tpl(subscriptions[2])) }
 
     before do
       allow(rdconfig).to receive(:consumer).and_return(rdconsumer1, rdconsumer2, rdconsumer3)

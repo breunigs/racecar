@@ -15,9 +15,25 @@ module Racecar
         Rdkafka::Config.statistics_callback = processor.method(:statistics_callback).to_proc
       end
 
+      setup_pauses
+    end
+
+    def setup_pauses
+      timeout = if config.pause_timeout == -1
+        nil
+      elsif config.pause_timeout > 0
+        config.pause_timeout
+      else
+        raise ArgumentError, "Invalid value for pause_timeout: must be integer greater or equal -1"
+      end
+
       @pauses = Hash.new {|h, k|
         h[k] = Hash.new {|h2, k2|
-          h2[k2] = ::Racecar::Pause.new
+          h2[k2] = ::Racecar::Pause.new(
+            timeout:             timeout,
+            max_timeout:         config.max_pause_timeout,
+            exponential_backoff: config.pause_with_exponential_backoff
+          )
         }
       }
     end
@@ -169,23 +185,10 @@ module Racecar
         desc = "#{topic}/#{partition}"
         logger.error "Failed to process #{desc} at #{offsets}: #{e}"
 
-        timeout = if config.pause_timeout == -1
-          logger.warn "Pausing partition #{desc} indefinitely, or until the process is restarted"
-          nil
-        elsif config.pause_timeout > 0
-          logger.warn "Pausing partition #{desc} for #{config.pause_timeout} seconds"
-          config.pause_timeout
-        else
-          raise ArgumentError, "Invalid value for pause_timeout: must be integer greater or equal -1"
-        end
-
+        pause = pauses[topic][partition]
+        logger.warn "Pausing partition #{desc} for #{pause.backoff_interval} seconds"
         consumer.pause(topic, partition)
-
-        pauses[topic][partition].pause!(
-          timeout:             timeout,
-          max_timeout:         config.max_pause_timeout,
-          exponential_backoff: config.pause_with_exponential_backoff
-        )
+        pause.pause!
       end
     end
 

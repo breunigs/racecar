@@ -97,7 +97,7 @@ class FakeConsumer
     raise "cannot handle more than one topic per consumer" if @topic != topic
   end
 
-  def subscription
+  def assignment
     Rdkafka::Consumer::TopicPartitionList.new.tap do |tpl|
       tpl.add_topic(topic, 1)
     end
