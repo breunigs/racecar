@@ -72,7 +72,39 @@ module Racecar
       end
     end
 
+    def pause(topic, partition)
+      consumer, filtered_tpl = find_consumer_by(topic, partition)
+      if !consumer
+        @logger.warn "Attempted to pause #{topic}/#{partition}, but we're not subscribed to it"
+        return
+      end
+
+      consumer.pause(filtered_tpl)
+    end
+
+    def resume(topic, partition)
+      consumer, filtered_tpl = find_consumer_by(topic, partition)
+      if !consumer
+        @logger.warn "Attempted to resume #{topic}/#{partition}, but we're not subscribed to it"
+        return
+      end
+
+      consumer.resume(filtered_tpl)
+    end
+
     private
+
+    def find_consumer_by(topic, partition)
+      each do |consumer|
+        tpl = consumer.subscription.to_h
+        rdkafka_partition = tpl[topic]&.detect { |part| part.partition == partition }
+        next unless rdkafka_partition
+        filtered_tpl = Rdkafka::Consumer::TopicPartitionList.new({ topic => [rdkafka_partition] })
+        return consumer, filtered_tpl
+      end
+
+      return nil, nil
+    end
 
     def current_subscription
       @config.subscriptions[@consumer_id_iterator.peek]

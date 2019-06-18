@@ -272,6 +272,7 @@ All timeouts are defined in number of seconds.
 
 * `session_timeout` – The idle timeout after which a consumer is kicked out of the group. Consumers must send heartbeats with at least this frequency.
 * `heartbeat_interval` – How often to send a heartbeat message to Kafka.
+* `pause_timeout` – How long to pause a partition for if the consumer raises an exception while processing a message. Default is to pause for 10 seconds. Set this to zero in order to disable automatic pausing of partitions.
 * `socket_timeout` – How long to wait when trying to communicate with a Kafka broker. Default is 30 seconds.
 * `max_wait_time` – How long to allow the Kafka brokers to wait before returning messages. A higher number means larger batches, at the cost of higher latency. Default is 1 second.
 
@@ -451,6 +452,8 @@ end
 ```
 
 Since the exception is handled by your `#process` method and is no longer raised, Racecar will consider the message successfully processed. Tracking these errors in an exception tracker or some other monitoring system is highly recommended, as you otherwise will have little insight into how many messages are being skipped this way.
+
+If, on the other hand, the exception was cause by a temporary network or database problem, you will probably want to retry processing of the message after some time has passed. By default, if an exception is raised by the `#process` method, the consumer will pause all processing of the message's partition for some number of seconds, configured by setting the `pause_timeout` configuration variable. This allows the consumer to continue processing messages from other partitions that may not be impacted by the problem while still making sure to not drop the original message. Since messages in a single Kafka topic partition _must_ be processed in order, it's not possible to keep processing _other_ messages in that partition.
 
 In addition to retrying the processing of messages, Racecar also allows defining an _error handler_ callback that is invoked whenever an exception is raised by your `#process` method. This allows you to track and report errors to a monitoring system:
 
