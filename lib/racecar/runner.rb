@@ -42,14 +42,7 @@ module Racecar
 
     def run
       install_signal_handlers
-
-      # Manually store offset after messages have been processed successfully
-      # to avoid marking failed messages as committed. The call just updates
-      # a value within librdkafka and is asynchronously written to proper
-      # storage through auto commits.
-      config.consumer << "enable.auto.offset.store=false"
-
-      @consumer = ConsumerSet.new(config, logger)
+      @stop_requested = false
 
       # Configure the consumer with a producer so it can produce messages and
       # with a consumer so that it can support advanced use-cases.
@@ -92,7 +85,7 @@ module Racecar
 
     private
 
-    attr_reader :consumer, :pauses
+    attr_reader :pauses
 
     def process_method
       @process_method ||= begin
@@ -102,6 +95,17 @@ module Racecar
         else
           raise NotImplementedError, "Consumer class must implement process or process_batch method"
         end
+      end
+    end
+
+    def consumer
+      @consumer ||= begin
+        # Manually store offset after messages have been processed successfully
+        # to avoid marking failed messages as committed. The call just updates
+        # a value within librdkafka and is asynchronously written to proper
+        # storage through auto commits.
+        config.consumer << "enable.auto.offset.store=false"
+        ConsumerSet.new(config, logger)
       end
     end
 
@@ -149,7 +153,7 @@ module Racecar
       }
 
       @instrumenter.instrument("process_message.racecar", payload) do
-        with_pause(message.topic, message.partition, message.offset) do
+        with_pause(message.topic, message.partition, message.offset..message.offset) do
           processor.process(message)
           processor.deliver!
           consumer.store_offset(message)
@@ -189,7 +193,7 @@ module Racecar
 
         pause = pauses[topic][partition]
         logger.warn "Pausing partition #{desc} for #{pause.backoff_interval} seconds"
-        consumer.pause(topic, partition)
+        consumer.pause(topic, partition, offsets.first)
         pause.pause!
       end
     end

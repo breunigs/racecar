@@ -64,12 +64,23 @@ RSpec.describe Racecar::ConsumerSet do
             expect(tpl.count).to eq 1
             expect(tpl).to be_kind_of Rdkafka::Consumer::TopicPartitionList
           end
-          consumer_set.pause("greetings", 0)
+          expect(rdconsumer).to receive(:seek)
+          consumer_set.pause("greetings", 0, 123456)
         end
 
         it "#pause doesn't pause unknown partitions" do
           expect(rdconsumer).not_to receive(:pause)
-          consumer_set.pause("greetings", 1)
+          expect(rdconsumer).not_to receive(:seek)
+
+          consumer_set.pause("greetings", 1, 123456)
+        end
+
+        it "#pause seeks to given offset" do
+          allow(rdconsumer).to receive(:pause)
+          expect(rdconsumer).to receive(:seek) do |msg|
+            expect(msg.offset).to eq 123456
+          end
+          consumer_set.pause("greetings", 0, 123456)
         end
 
         it "#resume allows to resume known partitions" do
@@ -239,20 +250,23 @@ RSpec.describe Racecar::ConsumerSet do
       end
 
       it "#pause pauses partition in right consumer" do
+        expect(rdconsumer1).not_to receive(:pause)
+        expect(rdconsumer1).not_to receive(:seek)
         expect(rdconsumer2).to receive(:pause).once
-        consumer_set.pause("profile", 0)
+        expect(rdconsumer2).to receive(:seek).once
+        consumer_set.pause("profile", 0, 1233456)
       end
 
       it "#pause doesn't pause unknown partitions" do
         expect(rdconsumer2).not_to receive(:pause)
-        consumer_set.pause("profile", 1)
+        consumer_set.pause("profile", 1, 1233456)
       end
 
       it "#pause doesn't pause unknown topics" do
         expect(rdconsumer1).not_to receive(:pause)
         expect(rdconsumer2).not_to receive(:pause)
         expect(rdconsumer3).not_to receive(:pause)
-        consumer_set.pause("unknowntopic", 0)
+        consumer_set.pause("unknowntopic", 0, 1233456)
       end
 
       it "#resume resumes partition in right consumer" do

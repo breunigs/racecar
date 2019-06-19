@@ -72,7 +72,7 @@ module Racecar
       end
     end
 
-    def pause(topic, partition)
+    def pause(topic, partition, offset)
       consumer, filtered_tpl = find_consumer_by(topic, partition)
       if !consumer
         @logger.warn "Attempted to pause #{topic}/#{partition}, but we're not subscribed to it"
@@ -80,6 +80,8 @@ module Racecar
       end
 
       consumer.pause(filtered_tpl)
+      fake_msg = OpenStruct.new(topic: topic, partition: partition, offset: offset)
+      consumer.seek(fake_msg)
     end
 
     def resume(topic, partition)
