@@ -157,9 +157,11 @@ message.headers #=> { "Header-A" => 42, ... }
 
 #### Long-running message processing
 
-If you have tasks that take longer than 5 minutes, you'll need to adjust `max_poll_interval`. If your consumer takes longer than this value to fetch the next message from Kafka a group rebalance will occur. Note that this applies even when batch processing, so you might want to adjust the batch size with `fetch_messages`. The default is 5 minutes.
+In order to avoid your consumer being kicked out of its group during long-running message processing operations, you'll need to let Kafka regularly know that the consumer is still healthy. There's two mechanisms in place to ensure that:
 
-In order to detect if your consumer died earlier than the `max_poll_interval` heartbeats will be sent regularly in the background. This happens on a separate thread and connection, so that your workload doesn't starve the heartbeats. You can configure when heartsbeats are sent exactly using `session_timeout` and `heartbeat_interval` options. Usually the default values are fine and don't need adjustment.
+*Heartbeats:* They are automatically sent in the background and ensure the broker can still talk to the consumer. This will detect network splits, ungraceful shutdowns, etc.
+
+*Message Fetch Interval:* Kafka expects the consumer to query for new messages within this time limit. This will detect situations with slow IO or the consumer being stuck in an infinite loop without making actual progress. This limit applies to a whole batch if you do batch processing. Use `max_poll_interval` to increase the default 5 minute timeout, or reduce batching with `fetch_messages`.
 
 #### Tearing down resources when stopping
 
@@ -260,6 +262,7 @@ All timeouts are defined in number of seconds.
 
 * `session_timeout` – The idle timeout after which a consumer is kicked out of the group. Consumers must send heartbeats with at least this frequency.
 * `heartbeat_interval` – How often to send a heartbeat message to Kafka.
+* `max_poll_interval` – The maximum time between two message fetches before the consumer is kicked out of the group. Put differently, your (batch) processing must finish earlier than this.
 * `pause_timeout` – How long to pause a partition for if the consumer raises an exception while processing a message. Default is to pause for 10 seconds. Set this to `0` in order to disable automatic pausing of partitions or to `-1` to pause indefinitely.
 * `pause_with_exponential_backoff` – Set to `true` if you want to double the `pause_timeout` on each consecutive failure of a particular partition.
 * `socket_timeout` – How long to wait when trying to communicate with a Kafka broker. Default is 30 seconds.
