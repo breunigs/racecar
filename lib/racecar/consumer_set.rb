@@ -151,6 +151,7 @@ module Racecar
         "fetch.wait.max.ms"       => @config.max_wait_time * 1000,
         "group.id"                => @config.group_id,
         "heartbeat.interval.ms"   => @config.heartbeat_interval * 1000,
+        "max.poll.interval.ms"    => @config.max_poll_interval * 1000,
         "queued.min.messages"     => @config.min_message_queue_size,
         "session.timeout.ms"      => @config.session_timeout * 1000,
         "socket.timeout.ms"       => @config.socket_timeout * 1000,

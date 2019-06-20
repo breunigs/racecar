@@ -155,23 +155,11 @@ Any headers set on the message will be available when consuming the message:
 message.headers #=> { "Header-A" => 42, ... }
 ```
 
-#### Heartbeats
+#### Long-running message processing
 
-In order to avoid your consumer being kicked out of its group during long-running message processing operations, it may be a good idea to periodically send so-called _heartbeats_ back to Kafka. This is done automatically for you after each message has been processed, but if the processing of a _single_ message takes a long time you may run into group stability issues.
+If you have tasks that take longer than 5 minutes, you'll need to adjust `max_poll_interval`. If your consumer takes longer than this value to fetch the next message from Kafka a group rebalance will occur. Note that this applies even when batch processing, so you might want to adjust the batch size with `fetch_messages`. The default is 5 minutes.
 
-If possible, intersperse `heartbeat` calls in between long-running operations in your consumer, e.g.
-
-```ruby
-def process(message)
-  long_running_op_one(message)
-
-  # Signals back to Kafka that we're still alive!
-  heartbeat
-
-  long_running_op_two(message)
-end
-```
-
+In order to detect if your consumer died earlier than the `max_poll_interval` heartbeats will be sent regularly in the background. This happens on a separate thread and connection, so that your workload doesn't starve the heartbeats. You can configure when heartsbeats are sent exactly using `session_timeout` and `heartbeat_interval` options. Usually the default values are fine and don't need adjustment.
 
 #### Tearing down resources when stopping
 

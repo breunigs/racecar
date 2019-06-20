@@ -23,10 +23,8 @@
 * [Instrumentation] `acknowledged_message.racecar` send whenever a produced message was successfully received by Kafka. Payload includes `offset` and `partition`, but no message details.
 * [Instrumentation] `rdkafka-ruby` does not yet provide instrumentation [rdkafka-ruby#54](https://github.com/appsignal/rdkafka-ruby/issues/54)
 * [Instrumentation] if processors define a `statistics_callback`, it will be called once every second for every subscription or producer connection. The first argument will be a Hash, for contents see [librdkafka STATISTICS.md](https://github.com/edenhill/librdkafka/blob/master/STATISTICS.md)
-
 * Add current directory to `$LOAD_PATH` only when `--require` option is used (#117).
-
-* TODO: reintroduce manual heartbeat support
+* Remove manual heartbeat support, as it's not required with librdkafka. If you run into rebalancing during long tasks, either reduce the batch size (`fetch_messages`) or increase the maximum time between messages fetches (`max_poll_interval`).
 
 ## racecar v0.5.0
 
