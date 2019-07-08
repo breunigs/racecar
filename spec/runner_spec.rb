@@ -297,6 +297,20 @@ RSpec.shared_examples "pause handling" do
     runner.run
     expect(kafka.consumers.first._paused).to eq true
   end
+
+  it "instruments on pauses" do
+      allow(instrumenter).to receive(:instrument).and_call_original
+      kafka.deliver_message(StandardError.new("surprise"), topic: "greetings")
+
+      runner.run
+
+      expect(instrumenter).to have_received(:instrument).with("pause_status.racecar", {
+        duration:  kind_of(Float),
+        partition: 0,
+        topic:     "greetings"
+      }).at_least(:once)
+  end
+
 end
 
 RSpec.describe Racecar::Runner do
@@ -321,6 +335,14 @@ RSpec.describe Racecar::Runner do
     include_examples "offset handling", "greetings"
     include_examples "pause handling"
 
+    it "builds producer with all config options" do
+      config.producer = ["hello=world", "hi=all"]
+
+      runner.run
+
+      expect(Rdkafka::Config).to have_received(:new).with(hash_including("hello" => "world", "hi" => "all"))
+    end
+
     it "processes messages with the specified consumer class" do
       kafka.deliver_message("hello world", topic: "greetings")
 
@@ -339,8 +361,8 @@ RSpec.describe Racecar::Runner do
         topic: "greetings"
       )
 
-      expect(instrumenter).to receive(:instrument).with("main_loop.racecar", {consumer_class: "TestConsumer"}).and_call_original.at_least(:once)
-      expect(instrumenter).to receive(:instrument).with("process_message.racecar", payload).at_least(:once)
+      expect(instrumenter).to receive(:instrument).with("main_loop.racecar", hash_including(consumer_class: "TestConsumer")).and_call_original.at_least(:once)
+      expect(instrumenter).to receive(:instrument).with("process_message.racecar", payload)
 
       runner.run
     end
@@ -399,9 +421,8 @@ RSpec.describe Racecar::Runner do
         topic: "greetings"
       )
 
-      expect(instrumenter).to receive(:instrument).with("main_loop.racecar", {consumer_class: "TestBatchConsumer"}).and_call_original.at_least(:once)
-      expect(instrumenter).to receive(:instrument).with("process_batch.racecar", payload).and_call_original.at_least(:once)
-      expect(instrumenter).to receive(:instrument).with("pause_status.racecar", {:duration=>0, :partition=>0, :topic=>"greetings"}).and_call_original.at_least(:once)
+      expect(instrumenter).to receive(:instrument).with("main_loop.racecar", hash_including(consumer_class: "TestBatchConsumer")).and_call_original.at_least(:once)
+      expect(instrumenter).to receive(:instrument).with("process_batch.racecar", payload)
 
       runner.run
     end
